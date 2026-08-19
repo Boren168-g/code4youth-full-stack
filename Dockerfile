@@ -25,19 +25,17 @@ RUN a2enmod rewrite
 # 3. Copy application code
 COPY ./api /var/www/html
 
-# 4. Fix permissions BEFORE composer install
+# 4. Fix permissions
 RUN mkdir -p /var/www/html/storage /var/www/html/bootstrap/cache
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
 # 5. Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-# Run as root but ensure bootstrap/cache is writable for artisan
 RUN composer install --no-interaction --optimize-autoloader --no-dev
 
-# 6. Final permission sync
-RUN chown -R www-data:www-data /var/www/html
+# 6. Setup entrypoint script
+RUN chmod +x /var/www/html/entrypoint.sh
+ENTRYPOINT ["/var/www/html/entrypoint.sh"]
 
 EXPOSE 80
-
-CMD ["apache2-foreground"]
