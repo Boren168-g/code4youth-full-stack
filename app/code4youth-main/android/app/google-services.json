@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "664460428859",
+    "project_id": "code4youth-aab16",
+    "storage_bucket": "code4youth-aab16.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:664460428859:android:85d22efe023a0448f4fe1e",
+        "android_client_info": {
+          "package_name": "kh.code4youth.code4youth"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAvMWhUTGDobTX42X_K6p_G4IrIVBF5N2g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

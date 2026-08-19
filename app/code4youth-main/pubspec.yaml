@@ -1,0 +1,68 @@
+name: code4youth
+description: "Code4Youth — a mobile-first coding education app for high school students."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.11.5 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  http: ^1.2.0
+  cupertino_icons: ^1.0.8
+  provider: ^6.1.5+1
+  flutter_localizations:
+    sdk: flutter
+  firebase_core: ^3.10.1
+  cloud_firestore: ^5.6.2
+  firebase_auth: ^5.4.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  fonts:
+    # Primary UI font — body text, labels, buttons, navigation, forms.
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+
+    # Display font — logo, level-up and achievement moments. Used sparingly.
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
+
+    # Code font — editor, code blocks, inline syntax.
+    - family: JetBrains Mono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/JetBrainsMono-Bold.ttf
+          weight: 700
+
+    # Khmer script — paired with Inter for localised content.
+    - family: Noto Sans Khmer
+      fonts:
+        - asset: assets/fonts/NotoSansKhmer-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/NotoSansKhmer-SemiBold.ttf
+          weight: 600

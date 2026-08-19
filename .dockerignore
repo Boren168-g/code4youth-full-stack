@@ -1,0 +1,11 @@
+.git
+.gitignore
+infra/.env
+api/.env
+api/vendor
+api/node_modules
+api/storage
+api/bootstrap/cache
+app/build
+app/.dart_tool
+**/*.log
