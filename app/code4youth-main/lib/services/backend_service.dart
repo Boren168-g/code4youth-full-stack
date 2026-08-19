@@ -3,21 +3,19 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 class BackendService {
-  static String get baseUrl {
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8000';
-    }
-    return 'http://localhost:8000';
-  }
+  // Your real hosted URL
+  static const String baseUrl = 'https://code4youth-full-stack.onrender.com';
 
   Future<Map<String, dynamic>> getStatus() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/status')).timeout(const Duration(seconds: 5));
+      print('[Docker] Checking status at $baseUrl/api/status');
+      final response = await http.get(Uri.parse('$baseUrl/api/status')).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         return json.decode(response.body) as Map<String, dynamic>;
       }
       return {'status': 'Error', 'message': 'HTTP ${response.statusCode}'};
     } catch (e) {
+      print('[Docker] Status Error: $e');
       return {'status': 'Error', 'message': e.toString()};
     }
   }
@@ -30,7 +28,6 @@ class BackendService {
       }
       return null;
     } catch (e) {
-      print('Error fetching profile from Docker: $e');
       return null;
     }
   }
@@ -51,26 +48,24 @@ class BackendService {
   }) async {
     try {
       final url = Uri.parse('$baseUrl/api/user/sync');
-      final body = json.encode({
-        'uid': uid,
-        'name': name,
-        'email': email,
-        'grade': grade,
-        'interests': interests ?? [],
-        'avatar': avatar,
-        'guardian_email': guardianEmail,
-        'consent_status': consentStatus,
-        'language_code': languageCode,
-        'xp': xp ?? 0,
-        'streak_days': streakDays ?? 0,
-        'completed_lessons': completedLessons ?? [],
-      });
-
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-        body: body,
-      ).timeout(const Duration(seconds: 10));
+        body: json.encode({
+          'uid': uid,
+          'name': name,
+          'email': email,
+          'grade': grade,
+          'interests': interests ?? [],
+          'avatar': avatar,
+          'guardian_email': guardianEmail,
+          'consent_status': consentStatus,
+          'language_code': languageCode,
+          'xp': xp ?? 0,
+          'streak_days': streakDays ?? 0,
+          'completed_lessons': completedLessons ?? [],
+        }),
+      ).timeout(const Duration(seconds: 15));
 
       return response.statusCode == 200;
     } catch (e) {
