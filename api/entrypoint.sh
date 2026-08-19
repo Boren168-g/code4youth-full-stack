@@ -3,12 +3,12 @@
 # Exit on error
 set -e
 
-# Clear caches
-php artisan config:clear
-php artisan route:clear
-php artisan view:clear
+# Clear caches (ignore errors if paths don't exist yet)
+php artisan config:clear || true
+php artisan route:clear || true
+php artisan view:clear || true
 
-# Run migrations (This will run every time the container starts)
+# Run migrations
 # --force is required for production
 php artisan migrate --force
 
