@@ -16,10 +16,12 @@ RUN apt-get update && apt-get install -y \
         zip \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Configure Apache
+# 2. Configure Apache to listen on Render's PORT
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+RUN sed -ri -e 's!Listen 80!Listen ${PORT}!g' /etc/apache2/ports.conf
+RUN sed -ri -e 's!<VirtualHost \*:80>!<VirtualHost *:${PORT}>!g' /etc/apache2/sites-available/*.conf
 RUN a2enmod rewrite
 
 # 3. Copy application code
@@ -38,4 +40,5 @@ RUN composer install --no-interaction --optimize-autoloader --no-dev
 RUN chmod +x /var/www/html/entrypoint.sh
 ENTRYPOINT ["/var/www/html/entrypoint.sh"]
 
-EXPOSE 80
+# Render provides the PORT env var
+EXPOSE ${PORT}
