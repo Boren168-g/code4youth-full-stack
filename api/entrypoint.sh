@@ -5,23 +5,27 @@ set -e
 
 echo "Starting Code4Youth API Setup..."
 
-# Ensure we have an APP_KEY, generate one if missing (only for safety, should be in env)
+# Ensure we have an APP_KEY, generate one if missing
 if [ -z "$APP_KEY" ]; then
-    echo "Warning: APP_KEY is missing. Generating a temporary one..."
-    php artisan key:generate --show --no-interaction
+    echo "Warning: APP_KEY is missing from environment variables."
+    # We generate one if it's missing just to allow it to boot,
+    # but the user SHOULD add it to Render settings.
+    export APP_KEY=$(php artisan key:generate --show --no-interaction)
+    echo "Generated temporary key: $APP_KEY"
 fi
 
-# Clear and Cache configuration for speed
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+# We skip config/route/view caching for now to avoid "View path not found" errors
+# on first boot. We only do basic setup.
 
-# Attempt to migrate. We wrap it in a retry loop because DB might not be ready
+# Attempt to migrate.
 echo "Running Database Migrations..."
-php artisan migrate --force || echo "Migration failed, skipping... Check your DB_URL."
+# This might fail if DB_URL is not set or DB is starting up.
+# We don't exit if it fails so the app can still boot.
+php artisan migrate --force || echo "Migration failed. This is expected if DB_URL is not set."
 
-# Fix permissions again for runtime
+# Ensure permissions are correct for storage and cache
 chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
 echo "Starting Apache Web Server..."
 # Start Apache
