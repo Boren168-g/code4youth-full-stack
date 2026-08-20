@@ -56,14 +56,14 @@ services:
   phpmyadmin:
     image: docker.io/library/phpmyadmin:5
     environment:
-      PMA_HOST: mysql
-      PMA_PORT: 3306
+      PMA_HOST: ${DB_HOST}
+      PMA_PORT: ${DB_PORT}
+      # Aiven requires SSL. This forces the client to use it.
+      PMA_PMADB: ""
+      MYSQL_SSL: "true"
       UPLOAD_LIMIT: 64M
     ports:
       - "127.0.0.1:${PMA_PORT:-8080}:80"
-    depends_on:
-      mysql:
-        condition: service_healthy
     networks: [c4y]
 
 volumes:
