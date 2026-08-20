@@ -1,27 +1,6 @@
 name: code4youth-dev
 
 services:
-  mysql:
-    image: docker.io/library/mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${DB_DATABASE}
-      MYSQL_USER: ${DB_USERNAME}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - "127.0.0.1:${DB_PORT_HOST:-3309}:3306"
-    volumes:
-      - mysql_data_dev:/var/lib/mysql
-      - ./mysql/my.cnf:/etc/mysql/conf.d/zz-app.cnf:ro,Z
-      - ./mysql/init:/docker-entrypoint-initdb.d:ro,Z
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 30s
-    networks: [c4y]
-
   php:
     build:
       context: ./php
@@ -38,9 +17,6 @@ services:
       FIREBASE_CREDENTIALS: /var/www/html/storage/app/firebase/service-account.json
     volumes:
       - ../api:/var/www/html:z
-    depends_on:
-      mysql:
-        condition: service_healthy
     networks: [c4y]
 
   nginx:
@@ -58,16 +34,13 @@ services:
     environment:
       PMA_HOST: ${DB_HOST}
       PMA_PORT: ${DB_PORT}
-      # Aiven requires SSL. This forces the client to use it.
-      PMA_PMADB: ""
+      # Hide the server box and use the values above
+      PMA_ARBITRARY: 0
       MYSQL_SSL: "true"
       UPLOAD_LIMIT: 64M
     ports:
       - "127.0.0.1:${PMA_PORT:-8080}:80"
     networks: [c4y]
-
-volumes:
-  mysql_data_dev:
 
 networks:
   c4y:
