@@ -5,7 +5,11 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Api\UserController;
 
 Route::get('/', function () {
-    return view('welcome');
+    return response()->json([
+        'message' => 'Code4Youth API is Live!',
+        'app_env' => config('app.env'),
+        'php_version' => PHP_VERSION,
+    ]);
 });
 
 Route::get('/api/status', function () {
