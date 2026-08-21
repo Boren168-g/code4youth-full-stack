@@ -14,7 +14,7 @@ class UserController extends Controller
 {
     public function sync(Request $request)
     {
-        Log::info('Global Sync started', $request->all());
+        Log::info('Sync request received from phone', $request->all());
 
         try {
             $v = $request->validate([
@@ -30,6 +30,7 @@ class UserController extends Controller
                 'language_code' => 'nullable|string',
                 'consent_status' => 'nullable|string',
                 'guardian_email' => 'nullable|email',
+                'history' => 'nullable|array',
             ]);
 
             DB::beginTransaction();
@@ -116,33 +117,50 @@ class UserController extends Controller
                 );
             }
 
-            // 7. Update Lessons (Tables: modules, lessons, user_lesson_progress)
-            if (!empty($v['completed_lessons'])) {
-                $adminId = DB::table('admins')->value('id') ?? DB::table('admins')->insertGetId([
-                    'name' => 'System', 'email' => 'sys@c4y.com', 'password' => 'secret', 'role' => 'super', 'is_active' => true
-                ]);
+            // 7. Update Lessons and History (Tables: modules, lessons, user_lesson_progress, lesson_attempts)
+            $adminId = DB::table('admins')->value('id') ?? DB::table('admins')->insertGetId([
+                'name' => 'System', 'email' => 'sys@c4y.com', 'password' => 'secret', 'role' => 'super', 'is_active' => true
+            ]);
 
-                foreach ($v['completed_lessons'] as $slug) {
+            if (!empty($v['history'])) {
+                foreach ($v['history'] as $entry) {
+                    $slug = $entry['lesson_id'];
                     $modSlug = substr($slug, 0, 2);
+
                     $modId = DB::table('modules')->where('slug', $modSlug)->value('id') ?? DB::table('modules')->insertGetId([
-                        'slug' => $modSlug, 'title' => "Module $modSlug", 'title_km' => "ម៉ូឌុល $modSlug",
+                        'slug' => $modSlug, 'title' => $entry['module_title'] ?? "Module $modSlug", 'title_km' => "ម៉ូឌុល $modSlug",
                         'description' => 'Auto', 'icon_key' => 'book', 'sort_order' => 1, 'created_by_admin_id' => $adminId
                     ]);
 
                     $lesId = DB::table('lessons')->where('slug', $slug)->value('id') ?? DB::table('lessons')->insertGetId([
-                        'slug' => $slug, 'module_id' => $modId, 'title' => "Lesson $slug", 'title_km' => "មេរៀន $slug",
+                        'slug' => $slug, 'module_id' => $modId, 'title' => $entry['lesson_title'] ?? "Lesson $slug", 'title_km' => "មេរៀន $slug",
                         'summary' => 'Auto', 'minutes' => 5, 'sort_order' => 1, 'created_by_admin_id' => $adminId
                     ]);
 
+                    // Update Progress
                     UserLessonProgress::updateOrCreate(
                         ['user_id' => $user->id, 'lesson_id' => $lesId],
-                        ['last_step_index' => 99, 'completed_at' => now()]
+                        ['last_step_index' => 99, 'completed_at' => $entry['completed_at']]
                     );
+
+                    // Log Attempt
+                    DB::table('lesson_attempts')->insert([
+                        'user_id' => $user->id,
+                        'lesson_id' => $lesId,
+                        'module_id' => $modId,
+                        'lesson_title_snapshot' => $entry['lesson_title'],
+                        'module_title_snapshot' => $entry['module_title'],
+                        'xp_earned' => $entry['xp_earned'],
+                        'attempts' => $entry['attempts'],
+                        'passed' => $entry['passed'],
+                        'completed_at' => $entry['completed_at'],
+                        'created_at' => now(),
+                    ]);
                 }
             }
 
             DB::commit();
-            return response()->json(['message' => 'Global Database Sync Successful', 'user' => $user]);
+            return response()->json(['message' => 'Detailed Global Sync Successful', 'user' => $user]);
 
         } catch (\Exception $e) {
             DB::rollBack();

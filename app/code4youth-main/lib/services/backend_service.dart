@@ -45,6 +45,7 @@ class BackendService {
     int? xp,
     int? streakDays,
     List<String>? completedLessons,
+    List<Map<String, dynamic>>? history,
   }) async {
     try {
       final url = Uri.parse('$baseUrl/api/user/sync');
@@ -64,6 +65,7 @@ class BackendService {
           'xp': xp ?? 0,
           'streak_days': streakDays ?? 0,
           'completed_lessons': completedLessons ?? [],
+          'history': history ?? [],
         }),
       ).timeout(const Duration(seconds: 15));
 

@@ -170,6 +170,16 @@ class AppState extends ChangeNotifier {
       completedLessons: _completedLessons.toList(),
       languageCode: _locale.languageCode,
       consentStatus: _user!.consent.name,
+      guardianEmail: _user!.guardianEmail,
+      history: _history.map((e) => {
+        'lesson_id': e.lessonId,
+        'lesson_title': e.lessonTitle,
+        'module_title': e.moduleTitle,
+        'completed_at': e.completedAt.toIso8601String(),
+        'xp_earned': e.xpEarned,
+        'attempts': e.attempts,
+        'passed': e.passed,
+      }).toList(),
     );
 
     if (success) {
