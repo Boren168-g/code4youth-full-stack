@@ -23,6 +23,7 @@ class User extends Authenticatable
         'xp',
         'lessons_completed',
         'streak_days',
+        'language_code',
         'last_active_at',
         'onboarded_at'
     ];
