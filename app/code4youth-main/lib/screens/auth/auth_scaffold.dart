@@ -7,8 +7,8 @@ import '../../widgets/buttons.dart';
 /// Shared layout for the auth and onboarding routes.
 ///
 /// The heading explains where the learner is, the form scrolls, and the
-/// primary action is pinned to the bottom so it stays in thumb reach and never
-/// hides behind the keyboard.
+/// primary action follows the content. This prevents the keyboard from 
+/// pushing the buttons over the input fields.
 class AuthScaffold extends StatelessWidget {
   const AuthScaffold({
     super.key,
@@ -26,7 +26,7 @@ class AuthScaffold extends StatelessWidget {
   final String subtitle;
   final List<Widget> children;
 
-  /// The pinned primary action.
+  /// The primary action button.
   final Widget action;
 
   final Widget? secondaryAction;
@@ -40,10 +40,13 @@ class AuthScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.background,
-      resizeToAvoidBottomInset: true,
+      // Fixed: Set to false to prevent the keyboard from pushing the whole screen up.
+      // This keeps the buttons at the absolute bottom of the scroll view.
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Column(
           children: <Widget>[
+            // Header with back button and progress bar
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Space.sm),
               child: Row(
@@ -79,13 +82,16 @@ class AuthScaffold extends StatelessWidget {
                 ],
               ),
             ),
+            
+            // Content and Actions together in a scrollable view
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(
+                // We add extra padding at the bottom so content isn't cut off by the keyboard
+                padding: EdgeInsets.fromLTRB(
                   Space.lg,
                   Space.lg,
                   Space.lg,
-                  Space.xl,
+                  Space.xl + MediaQuery.viewInsetsOf(context).bottom,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -102,32 +108,20 @@ class AuthScaffold extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: Space.xl),
+                    
+                    // Input fields/form content
                     ...children,
+                    
+                    const SizedBox(height: Space.xxl),
+                    
+                    // Buttons now follow the content instead of being pinned
+                    action,
+                    if (secondaryAction != null) ...<Widget>[
+                      const SizedBox(height: Space.sm),
+                      secondaryAction!,
+                    ],
                   ],
                 ),
-              ),
-            ),
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.fromLTRB(
-                Space.lg,
-                Space.lg,
-                Space.lg,
-                Space.lg + MediaQuery.viewInsetsOf(context).bottom,
-              ),
-              decoration: BoxDecoration(
-                color: context.surface,
-                border: Border(top: BorderSide(color: context.divider)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  action,
-                  if (secondaryAction != null) ...<Widget>[
-                    const SizedBox(height: Space.sm),
-                    secondaryAction!,
-                  ],
-                ],
               ),
             ),
           ],

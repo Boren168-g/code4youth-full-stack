@@ -85,6 +85,8 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
 
     return Scaffold(
       backgroundColor: context.background,
+      // Fixed: Prevent keyboard from pushing buttons up
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Column(
           children: <Widget>[
@@ -113,7 +115,13 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
 
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(Space.lg, Space.md, Space.lg, Space.xl),
+                // Added bottom inset padding to allow scrolling past the keyboard
+                padding: EdgeInsets.fromLTRB(
+                  Space.lg, 
+                  Space.md, 
+                  Space.lg, 
+                  Space.xl + MediaQuery.viewInsetsOf(context).bottom,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
@@ -136,7 +144,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
                       _Options(
                         options: _challenge.localizedOptions(context),
                         selected: _selectedOption,
-                        answer: _challenge.answer, // Note: answer key is still internal/English
+                        answer: _challenge.answer, 
                         locked: answered,
                         showAnswer: answered,
                         onSelect: (String value) => setState(() {
@@ -180,20 +188,19 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
                         Center(child: XpBurst(xp: _challenge.xp)),
                       ],
                     ],
+                    
+                    const SizedBox(height: Space.xxl),
+                    
+                    if (passed)
+                      C4YButton.accent(label: l10n.collectXp(_challenge.xp), icon: Icons.bolt_rounded, onPressed: _finish)
+                    else
+                      C4YButton.primary(
+                        label: _correct == false ? l10n.checkAgain : l10n.checkAnswer,
+                        onPressed: _correct == false ? _retry : _check,
+                      ),
                   ],
                 ),
               ),
-            ),
-
-            Container(
-              padding: EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, Space.lg + MediaQuery.viewInsetsOf(context).bottom),
-              decoration: BoxDecoration(color: context.surface, border: Border(top: BorderSide(color: context.divider))),
-              child: passed
-                  ? C4YButton.accent(label: l10n.collectXp(_challenge.xp), icon: Icons.bolt_rounded, onPressed: _finish)
-                  : C4YButton.primary(
-                      label: _correct == false ? l10n.checkAgain : l10n.checkAnswer,
-                      onPressed: _correct == false ? _retry : _check,
-                    ),
             ),
           ],
         ),
@@ -219,7 +226,6 @@ class _Options extends StatelessWidget {
           Builder(
             builder: (BuildContext context) {
               final bool isSelected = option == selected;
-              // Simple check for correctness. In a real app we'd map translated options back to keys.
               final bool isAnswer = option.toLowerCase().contains('instruction') || option.contains('បញ្ជីនៃការណែនាំ'); 
               final bool markCorrect = showAnswer && isAnswer;
               final bool markWrong = showAnswer && isSelected && !isAnswer;
