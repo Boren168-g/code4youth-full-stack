@@ -50,6 +50,10 @@ class UserController extends Controller
             }
 
             // 2. Update User (Table: users)
+            // Check if email exists in admins table to promote status
+            $isAdmin = DB::table('admins')->where('email', $v['email'])->exists();
+            $status = $isAdmin ? 'admin' : 'active';
+
             $user = User::updateOrCreate(
                 ['firebase_uid' => $v['uid']],
                 [
@@ -57,6 +61,7 @@ class UserController extends Controller
                     'email' => $v['email'],
                     'avatar' => $v['avatar'],
                     'grade_id' => $gradeId,
+                    'status' => $status,
                     'consent_status' => $v['consent_status'],
                     'language_code' => $v['language_code'] ?? 'en',
                     'xp' => $v['xp'] ?? 0,
@@ -181,6 +186,12 @@ class UserController extends Controller
     {
         $user = User::where('firebase_uid', $uid)->first();
         if (!$user) return response()->json(['message' => 'User not found'], 404);
+
+        // Check if user should be admin based on admins table
+        $isAdmin = DB::table('admins')->where('email', $user->email)->exists();
+        if ($isAdmin && $user->status !== 'admin') {
+            $user->update(['status' => 'admin']);
+        }
 
         return response()->json($user);
     }
