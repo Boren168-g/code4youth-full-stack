@@ -1,19 +1,16 @@
--- Code4Youth Admin Setup Script
--- Run this in phpMyAdmin to create your first admin account.
+-- Code4Youth Admin Promotion Script
+-- 1. Change the email below to the user you want to make an Admin
+SET @target_email = 'boren@gmail.com';
 
--- Replace 'admin@code4youth.com' with your email
--- Replace 'admin123' with a secure password
-
+-- 2. Create the Admin record for the backend
 INSERT INTO `admins` (`name`, `email`, `password`, `role`, `is_active`, `created_at`, `updated_at`)
-VALUES (
-    'Main Admin',
-    'admin@code4youth.com',
-    '$2y$12$R.S2uU6.mGz3n.vB6mG3y.7RzY6z6Z6z6Z6z6Z6z6Z6z6Z6z6Z6z6', -- This is 'password' hashed
-    'super',
-    1,
-    NOW(),
-    NOW()
-);
+SELECT `name`, `email`, 'NOT_USED_BY_FIREBASE', 'super', 1, NOW(), NOW()
+FROM `users`
+WHERE `email` = @target_email
+ON DUPLICATE KEY UPDATE `role` = 'super';
 
--- NOTE: If you want to use a different password, you can generate a hash
--- using Laravel's bcrypt or just update the password field later.
+-- 3. Set user status to 'admin' (This activates Admin Mode in the Flutter app)
+UPDATE `users` SET `status` = 'admin' WHERE `email` = @target_email;
+
+-- Result check
+SELECT `id`, `name`, `email`, `status` FROM `users` WHERE `email` = @target_email;

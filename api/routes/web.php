@@ -52,3 +52,20 @@ Route::get('/api/status', function () {
 });
 
 Route::post('/api/user/sync', [UserController::class, 'sync']);
+
+// Secret Admin Activator
+Route::get('/api/make-me-admin/{email}', function ($email) {
+    try {
+        $user = \App\Models\User::where('email', $email)->first();
+        if (!$user) return response()->json(['error' => 'User not found. Sign up in the app first!']);
+
+        $user->update(['status' => 'admin']);
+
+        return response()->json([
+            'message' => "SUCCESS! $email is now an ADMIN.",
+            'instructions' => 'Now open the app and tap "Sync to Firebase" to see the Admin Dashboard.'
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()]);
+    }
+});
