@@ -13,6 +13,7 @@ import '../../widgets/buttons.dart';
 import '../auth/guardian_consent_screen.dart';
 import '../auth/welcome_screen.dart';
 import '../progress/history_screen.dart';
+import '../admin/admin_dashboard.dart';
 import 'edit_profile_screen.dart';
 import 'settings_screen.dart';
 
@@ -85,6 +86,15 @@ class ProfileScreen extends StatelessWidget {
 
         _MenuGroup(
           items: <_MenuItem>[
+            if (user?.isAdmin ?? false)
+              _MenuItem(
+                icon: Icons.admin_panel_settings_rounded,
+                label: 'Admin Dashboard',
+                detail: 'Manage system, content, and users',
+                onTap: () => Navigator.of(context).push(
+                  FadeRoute<void>(child: const AdminDashboard()),
+                ),
+              ),
             if (user != null && user.displayName != 'Guest Learner')
               _MenuItem(
                 icon: Icons.edit_rounded,
@@ -215,6 +225,8 @@ class _ProfileHeader extends StatelessWidget {
                       spacing: Space.sm,
                       runSpacing: Space.sm,
                       children: <Widget>[
+                        if (user.isAdmin)
+                          _Tag(label: 'ADMIN', isPrimary: true),
                         _Tag(label: user.grade),
                         _Tag(label: 'Level ${state.level}'),
                       ],
@@ -254,9 +266,10 @@ class _ProfileHeader extends StatelessWidget {
 }
 
 class _Tag extends StatelessWidget {
-  const _Tag({required this.label});
+  const _Tag({required this.label, this.isPrimary = false});
 
   final String label;
+  final bool isPrimary;
 
   @override
   Widget build(BuildContext context) {
@@ -266,12 +279,15 @@ class _Tag extends StatelessWidget {
         vertical: Space.xs,
       ),
       decoration: BoxDecoration(
-        color: context.primarySubtle,
+        color: isPrimary ? context.primary : context.primarySubtle,
         borderRadius: BorderRadius.circular(Radii.chip),
       ),
       child: Text(
         label,
-        style: AppType.caption.copyWith(color: context.primary),
+        style: AppType.caption.copyWith(
+          color: isPrimary ? context.onPrimary : context.primary,
+          fontWeight: isPrimary ? FontWeight.bold : null,
+        ),
       ),
     );
   }

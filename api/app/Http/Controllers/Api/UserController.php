@@ -160,7 +160,15 @@ class UserController extends Controller
             }
 
             DB::commit();
-            return response()->json(['message' => 'Detailed Global Sync Successful', 'user' => $user]);
+
+            // Reload user to get latest status and associations
+            $user->refresh();
+
+            return response()->json([
+                'message' => 'Detailed Global Sync Successful',
+                'user' => $user,
+                'status' => $user->status
+            ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -172,6 +180,8 @@ class UserController extends Controller
     public function getProfile($uid)
     {
         $user = User::where('firebase_uid', $uid)->first();
-        return $user ? response()->json($user) : response()->json(['message' => 'User not found'], 404);
+        if (!$user) return response()->json(['message' => 'User not found'], 404);
+
+        return response()->json($user);
     }
 }

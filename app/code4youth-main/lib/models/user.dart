@@ -13,6 +13,7 @@ class UserProfile {
     this.guardianEmail,
     this.consent = ConsentStatus.notRequired,
     this.languageCode = 'en',
+    this.status = 'active',
   });
 
   final String displayName;
@@ -23,9 +24,11 @@ class UserProfile {
   final String? guardianEmail;
   final ConsentStatus consent;
   final String languageCode;
+  final String status;
 
   bool get isMinor => grade != 'University';
   bool get isActivated => consent == ConsentStatus.notRequired || consent == ConsentStatus.granted;
+  bool get isAdmin => status == 'admin';
 
   Map<String, dynamic> toMap() {
     return {
@@ -37,6 +40,7 @@ class UserProfile {
       'guardianEmail': guardianEmail,
       'consent': consent.name,
       'languageCode': languageCode,
+      'status': status,
     };
   }
 
@@ -50,6 +54,7 @@ class UserProfile {
       guardianEmail: map['guardianEmail'] as String?,
       consent: ConsentStatus.values.byName(map['consent'] as String? ?? 'notRequired'),
       languageCode: map['languageCode'] as String? ?? 'en',
+      status: map['status'] as String? ?? 'active',
     );
   }
 
@@ -62,6 +67,7 @@ class UserProfile {
     String? guardianEmail,
     ConsentStatus? consent,
     String? languageCode,
+    String? status,
   }) {
     return UserProfile(
       displayName: displayName ?? this.displayName,
@@ -72,6 +78,7 @@ class UserProfile {
       guardianEmail: guardianEmail ?? this.guardianEmail,
       consent: consent ?? this.consent,
       languageCode: languageCode ?? this.languageCode,
+      status: status ?? this.status,
     );
   }
 }

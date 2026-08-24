@@ -90,6 +90,7 @@ class AppState extends ChangeNotifier {
             interests: List<String>.from(dockerData['interests'] ?? []),
             avatar: dockerData['avatar'] ?? '🦊',
             languageCode: dockerData['language_code'] ?? 'en',
+            status: dockerData['status'] ?? 'active',
           );
           
           // Map progress fields from Docker
@@ -184,6 +185,12 @@ class AppState extends ChangeNotifier {
 
     if (success) {
        _backendStatus = 'Connected\nSync Successful!';
+       // Refresh local status from response if returned
+       final response = await _backendService.getProfile(uid);
+       if (response != null && response['status'] != null) {
+          _user = _user?.copyWith(status: response['status']);
+          notifyListeners();
+       }
     }
     notifyListeners();
   }
