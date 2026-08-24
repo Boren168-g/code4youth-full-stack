@@ -75,14 +75,14 @@ class AppState extends ChangeNotifier {
       _user = const UserProfile(displayName: 'Guest Learner', email: 'guest@example.com', grade: 'None', interests: [], avatar: '🦊');
       _clearLocalData();
     } else {
-      // 1. Try to load from Firestore first
+      // 1. Try to load basics from Firestore
       var profile = await _dbService.getProfile(firebaseUser.uid);
       var progress = await _dbService.getProgress(firebaseUser.uid);
 
-      // 2. If Firestore is empty, try to load from Docker
-      if (profile == null) {
-        final dockerData = await _backendService.getProfile(firebaseUser.uid);
-        if (dockerData != null) {
+      // 2. ALWAYS check MySQL for the latest status (Admin/Active) and progress
+      final dockerData = await _backendService.getProfile(firebaseUser.uid);
+      if (dockerData != null) {
+        if (profile == null) {
           profile = UserProfile(
             displayName: dockerData['name'] ?? 'Learner',
             email: dockerData['email'] ?? 'learner@example.com',
@@ -92,19 +92,21 @@ class AppState extends ChangeNotifier {
             languageCode: dockerData['language_code'] ?? 'en',
             status: dockerData['status'] ?? 'active',
           );
-          
-          // Map progress fields from Docker
-          _xp = dockerData['xp'] ?? 0;
-          _streakDays = dockerData['streak_days'] ?? 0;
-          _completedLessons.clear();
-          _completedLessons.addAll(List<String>.from(dockerData['completed_lessons'] ?? []));
+        } else {
+          // Update the local profile with the latest status from MySQL
+          profile = profile.copyWith(status: dockerData['status'] ?? 'active');
         }
+        
+        // Update XP/Streak from MySQL as the primary source
+        _xp = dockerData['xp'] ?? 0;
+        _streakDays = dockerData['streak_days'] ?? 0;
+        _completedLessons.clear();
+        _completedLessons.addAll(List<String>.from(dockerData['completed_lessons'] ?? []));
       }
 
       if (profile != null) {
         _user = profile;
       } else {
-        // Final fallback to Firebase basic info
         _user = UserProfile(
           displayName: firebaseUser.displayName ?? 'New Learner',
           email: firebaseUser.email ?? 'learner@example.com',
@@ -114,9 +116,8 @@ class AppState extends ChangeNotifier {
         );
       }
       
-      if (progress != null) _loadProgressFromMap(progress);
+      if (progress != null && dockerData == null) _loadProgressFromMap(progress);
       
-      // Auto-sync after login to keep both in sync
       _syncProgress();
     }
     notifyListeners();
