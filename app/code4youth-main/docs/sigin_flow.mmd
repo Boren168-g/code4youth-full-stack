@@ -1,0 +1,41 @@
+flowchart TD
+    Shell[AppShell<br/>IndexedStack, 4 tabs]
+
+    Shell --> Home[Home tab]
+    Shell --> Learn[Learn tab]
+    Shell --> Progress[Progress tab]
+    Shell --> Profile[Profile tab]
+
+    Home -->|Continue| Lesson
+    Home -->|module card| ModDetail
+    Home -->|See all| Learn
+    Home -->|recent activity| History
+
+    Learn -->|module card| ModDetail[ModuleDetailScreen]
+    ModDetail -->|locked| LockMsg[/Shows unlock requirement<br/>from module_prerequisites/]
+    ModDetail -->|lesson row| Lesson[LessonScreen<br/>steps carousel]
+
+    Lesson -->|each step change| Save[PATCH /api/progress<br/>last_step_index]
+    Lesson -->|last step| Challenge[ChallengeScreen]
+    Challenge -->|wrong| Hint[/Show hint, attempts++/] --> Challenge
+    Challenge -->|correct| Complete[POST /api/lessons/id/complete]
+
+    Complete --> Reward{outcome?}
+    Reward -->|leveledUp| LevelUp[LevelUpScreen] --> BadgeCheck
+    Reward -->|no level change| BadgeCheck{newBadges?}
+    BadgeCheck -->|yes| Badge[BadgeAwardScreen] --> Result
+    BadgeCheck -->|no| Result[ResultScreen]
+    Result -->|Next lesson| Lesson
+    Result -->|Done| Shell
+
+    Progress --> History[HistoryScreen]
+    Profile --> Edit[EditProfileScreen] --> PatchMe[PATCH /api/me]
+    Profile --> History
+    Profile --> Settings[SettingsScreen]
+
+    Settings --> Prefs[PATCH /api/preferences<br/>theme, locale, reminders]
+    Settings --> Out[Sign out<br/>Firebase signOut + clear token] --> Welcome([WelcomeScreen])
+    Settings --> Delete[Delete account<br/>Laravel soft-delete + Firebase deleteUser] --> Welcome
+
+    Complete -.->|offline| Queue[(sync_queue_events<br/>local, flush on reconnect)]
+    Save -.->|offline| Queue

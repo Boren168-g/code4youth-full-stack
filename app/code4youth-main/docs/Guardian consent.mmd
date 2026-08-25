@@ -1,0 +1,30 @@
+sequenceDiagram
+    autonumber
+    actor L as Learner
+    participant F as Flutter App
+    participant API as Laravel API
+    participant DB as MySQL
+    participant M as Email Service
+    actor G as Guardian
+
+    F->>API: POST /api/guardian-consents - guardian_email
+    API->>DB: insert row - status pending, signed token
+    API->>M: queue ConsentRequestMail
+    M->>G: email with approve and decline links
+    API-->>F: 202 accepted
+
+    loop every 10 seconds while on ConsentPendingScreen
+        F->>API: GET /api/me + Bearer
+        API->>DB: read consent_status
+        DB-->>API: pending
+        API-->>F: 200 - still pending
+    end
+
+    G->>API: GET /consent/approve/{token} - browser, no login
+    API->>API: verify signature and expiry
+    API->>DB: status granted, responded_at now, users.consent_status synced
+    API-->>G: confirmation web page
+
+    F->>API: GET /api/me + Bearer - next poll
+    API-->>F: 200 - consent granted
+    F->>L: AppShell unlocked

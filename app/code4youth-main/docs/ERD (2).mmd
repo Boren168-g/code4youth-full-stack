@@ -1,0 +1,327 @@
+---
+id: 9265f6fe-1473-4e98-8e6c-3d97c5733f6a
+---
+erDiagram
+    %% ---------- AUTH BOUNDARY ----------
+    firebase_auth_user ||--|| users : "uid maps to firebase_uid"
+
+    %% ---------- IDENTITY ----------
+    grades            ||--o{ users              : "classifies"
+    users             ||--|| user_stats         : "has"
+    users             ||--|| user_preferences   : "has"
+    users             ||--o{ guardian_consents  : "requests approval via"
+    users             ||--o{ interest_user      : "selects"
+    interests         ||--o{ interest_user      : "selected by"
+
+    %% ---------- STAFF AND COHORTS ----------
+    admins            ||--o{ cohorts            : "teaches"
+    cohorts           ||--o{ cohort_user        : "enrols"
+    users             ||--o{ cohort_user        : "enrolled in"
+    admins            ||--o{ modules            : "authors"
+    admins            ||--o{ lessons            : "authors"
+
+    %% ---------- ADMINISTRATION (V4) ----------
+    admins            ||..o{ audit_logs         : "acts - polymorphic, no FK"
+    users             ||..o{ audit_logs         : "is acted upon - polymorphic, no FK"
+    admins            ||..o{ app_settings       : "changes - no FK, audited"
+
+    %% ---------- CURRICULUM ----------
+    modules           ||--o{ lessons              : "contains"
+    modules           ||--o{ module_prerequisites : "depends on"
+    modules           ||--o{ module_prerequisites : "is prerequisite for"
+    lessons           ||--o{ lesson_steps         : "contains"
+    lessons           ||--|| challenges           : "assessed by - exactly one"
+    lesson_steps      ||--o{ lesson_step_items    : "lists"
+    challenges        ||--o{ challenge_options    : "offers"
+
+    %% ---------- PROGRESS ----------
+    users             ||--o{ user_lesson_progress : "tracks"
+    lessons           ||--o{ user_lesson_progress : "tracked by"
+    users             ||--o{ badge_user           : "earns"
+    badges            ||--o{ badge_user           : "awarded as"
+    users             ||--o{ lesson_attempts      : "logs"
+    lessons           ||--o{ lesson_attempts      : "recorded in"
+    modules           ||--o{ lesson_attempts      : "reported under"
+    levels            ||..o{ user_stats           : "derived via xp - no FK"
+
+    %% ---------- OFFLINE ----------
+    users             ||--o{ sync_queue_events  : "queues"
+
+    %% ============================================================
+    %% ENTITIES
+    %% ============================================================
+
+    firebase_auth_user {
+        varchar(128) uid PK "EXTERNAL - Firebase owns this, no MySQL table"
+        varchar(255) email
+        boolean email_verified
+        varchar(255) display_name
+        varchar(50) provider_id
+        timestamp created_at
+        timestamp last_sign_in_at
+    }
+
+    users {
+        bigint id PK "LIVE - surrogate key"
+        varchar(128) firebase_uid UK "LIVE - firstOrCreate key, learners only"
+        varchar(255) email UK "LIVE"
+        varchar(255) name "LIVE - code uses name, Dart UserProfile.displayName maps to it"
+        varchar(16) avatar "CODE - emoji, not an upload"
+        bigint grade_id FK "NEW - nullable until onboarding, RESTRICT"
+        varchar(20) status "LIVE V4 - active suspended pending, gates every request"
+        varchar(20) consent_status "LIVE - cached projection of guardian_consents"
+        timestamp email_verified_at "LIVE - mirrored from Firebase token claim"
+        timestamp last_active_at "LIVE V4 - written at most every 5 minutes"
+        timestamp onboarded_at "V3 - NULL means needs_onboarding"
+        int xp "LIVE V4 - denormalised counter, see appendix A13"
+        smallint lessons_completed "LIVE V4 - denormalised counter"
+        smallint streak_days "LIVE V4 - denormalised counter"
+        timestamp created_at "LIVE"
+        timestamp updated_at "LIVE"
+        timestamp deleted_at "NEW - soft delete"
+    }
+
+    admins {
+        bigint id PK "V3 - staff, separate from learners"
+        varchar(255) name "V3"
+        varchar(255) email UK "V3"
+        varchar(255) password "V3 - Laravel session auth, NOT Firebase"
+        varchar(20) role "V3 - author teacher superadmin"
+        boolean is_active "V3 - staff equivalent of users.status"
+        timestamp created_at "V3"
+        timestamp updated_at "V3"
+    }
+
+    audit_logs {
+        bigint id PK "LIVE"
+        varchar(20) actor_type "V4 - admin or user, polymorphic since staff left users"
+        bigint actor_id "V4 - no FK once polymorphic, see appendix A7"
+        varchar(255) actor_name "LIVE - snapshot, survives rename and delete"
+        varchar(40) action "LIVE - role_changed account_suspended access_denied etc"
+        varchar(20) target_type "V4 - nullable"
+        bigint target_id "LIVE - no FK once polymorphic"
+        varchar(255) target_name "LIVE - nullable snapshot"
+        varchar(255) previous_value "LIVE"
+        varchar(255) new_value "LIVE"
+        varchar(255) note "LIVE - free text, carries the refused ability"
+        timestamp created_at "LIVE - append only, no updated_at"
+    }
+
+    app_settings {
+        varchar(64) key PK "LIVE V4 - currently only maintenance_mode"
+        text value "LIVE"
+        timestamp created_at "LIVE"
+        timestamp updated_at "LIVE"
+    }
+
+    cohorts {
+        bigint id PK "V3"
+        varchar(20) code UK "V3 - join code, e.g. G10A-2026"
+        varchar(255) name "V3"
+        varchar(255) school_name "V3 - nullable"
+        bigint admin_id FK "V3 - owning teacher, RESTRICT"
+        timestamp created_at "V3"
+        timestamp updated_at "V3"
+        timestamp deleted_at "V3"
+    }
+
+    cohort_user {
+        bigint id PK "V3"
+        bigint cohort_id FK "V3 - CASCADE, unique with user_id, see appendix A8"
+        bigint user_id FK "V3 - CASCADE"
+        timestamp joined_at "V3"
+        timestamp left_at "V3 - nullable"
+    }
+
+    user_stats {
+        bigint user_id PK,FK "FIX - shared PK enforces 1:1"
+        int xp "CODE"
+        smallint streak_days "CODE"
+        smallint first_try_correct "CODE"
+        date last_activity_date "NEW - streaks cannot work without it"
+        timestamp created_at "NEW"
+        timestamp updated_at "NEW"
+    }
+
+    user_preferences {
+        bigint user_id PK,FK "FIX - shared PK enforces 1:1"
+        varchar(10) theme_mode "CODE - system light dark"
+        char(2) locale "FIX - sole owner, removed from users"
+        boolean reduce_motion "CODE"
+        boolean daily_reminder "CODE"
+        timestamp created_at "NEW"
+        timestamp updated_at "NEW"
+    }
+
+    guardian_consents {
+        bigint id PK "NEW"
+        bigint user_id FK "NEW - CASCADE on user delete"
+        varchar(255) guardian_email "CODE - sole owner, removed from users"
+        varchar(20) status "CODE - pending granted declined expired"
+        varchar(64) token UK "FIX - bearer link, must be unique"
+        boolean is_current "FIX - one active request per user, see appendix A6"
+        timestamp requested_at "NEW"
+        timestamp responded_at "NEW - nullable"
+    }
+
+    modules {
+        bigint id PK "NEW"
+        varchar(20) slug UK "CODE - m1 to m5"
+        varchar(255) title "CODE"
+        varchar(255) title_km "CODE"
+        text description "CODE"
+        varchar(64) icon_key "CODE - was IconData"
+        smallint sort_order UK "FIX - NOT NULL and unique, see appendix A9"
+        bigint created_by_admin_id FK "V3 - RESTRICT"
+        timestamp published_at "V3 - NULL means draft, replaces is_published"
+        timestamp created_at "NEW"
+        timestamp updated_at "NEW"
+        timestamp deleted_at "FIX - soft delete protects learner history"
+    }
+
+    module_prerequisites {
+        bigint id PK "FIX - NEW TABLE, replaced requires_module_id"
+        bigint module_id FK "FIX - the dependent module"
+        bigint prerequisite_module_id FK "FIX - what must be finished first"
+        timestamp created_at "NEW"
+    }
+
+    lessons {
+        bigint id PK "NEW"
+        varchar(20) slug UK "CODE - m1l1 style"
+        bigint module_id FK "CODE - RESTRICT"
+        varchar(255) title "CODE"
+        varchar(255) title_km "CODE"
+        text summary "CODE"
+        smallint minutes "CODE - never above 20"
+        smallint xp "CODE - default 30"
+        smallint sort_order "FIX - NOT NULL, unique per module"
+        boolean is_project "V4 - replaces the Build: title prefix, see appendix A11"
+        bigint created_by_admin_id FK "V3 - RESTRICT"
+        timestamp published_at "V3 - NULL means draft"
+        timestamp created_at "NEW"
+        timestamp updated_at "NEW"
+        timestamp deleted_at "FIX - soft delete protects learner history"
+    }
+
+    lesson_steps {
+        bigint id PK "NEW"
+        bigint lesson_id FK "NEW - CASCADE"
+        smallint step_index "FIX - NOT NULL, unique per lesson, resume cursor"
+        varchar(20) kind "CODE - text code callout list"
+        varchar(255) title "CODE"
+        text body "CODE"
+        text body_km "CODE - nullable"
+        varchar(20) language "CODE - default python"
+        timestamp created_at "NEW"
+        timestamp updated_at "NEW"
+    }
+
+    lesson_step_items {
+        bigint id PK "NEW"
+        bigint lesson_step_id FK "NEW - CASCADE"
+        smallint position "FIX - NOT NULL, unique per step"
+        varchar(255) label "CODE - was a List of String"
+    }
+
+    challenges {
+        bigint id PK "NEW"
+        bigint lesson_id FK,UK "FIX - unique index enforces 1:1, NOT NULL, see appendix A14"
+        varchar(20) kind "CODE - multipleChoice fillBlank predictOutput"
+        text prompt "CODE"
+        varchar(255) answer "FIX - nullable, NULL for multipleChoice, see appendix A4"
+        text hint "CODE"
+        text code "CODE - nullable"
+        smallint xp "CODE - default 20"
+        timestamp created_at "NEW"
+        timestamp updated_at "NEW"
+    }
+
+    challenge_options {
+        bigint id PK "NEW"
+        bigint challenge_id FK "NEW - CASCADE"
+        smallint position "FIX - NOT NULL, unique per challenge"
+        varchar(255) label "CODE"
+        boolean is_correct "NEW - authoritative for multipleChoice, see appendix A5"
+    }
+
+    badges {
+        bigint id PK "NEW"
+        varchar(40) slug UK "CODE - referenced by award logic"
+        varchar(255) name "CODE"
+        text description "CODE"
+        varchar(64) icon_key "CODE"
+        varchar(255) requirement_text "CODE - display prose only"
+        varchar(40) criteria_type "NEW - server side evaluation"
+        json criteria_params "FIX - was a single varchar, too thin"
+        smallint sort_order "FIX - NOT NULL"
+    }
+
+    grades {
+        bigint id PK "NEW"
+        varchar(20) code UK "CODE - Grade 7 to University"
+        varchar(50) label "NEW"
+        boolean is_minor "NEW - drives the consent gate"
+        smallint sort_order "FIX - NOT NULL"
+    }
+
+    interests {
+        bigint id PK "NEW"
+        varchar(50) name UK "CODE"
+        varchar(64) icon_key "CODE"
+        smallint sort_order "FIX - NOT NULL"
+    }
+
+    levels {
+        bigint id PK "NEW"
+        smallint level_no UK "CODE"
+        int min_xp UK "FIX - thresholds must not collide"
+        varchar(50) title "CODE - Newcomer to Code Master"
+    }
+
+    interest_user {
+        bigint id PK "NEW"
+        bigint user_id FK "NEW - CASCADE, unique with interest_id"
+        bigint interest_id FK "NEW - RESTRICT"
+    }
+
+    user_lesson_progress {
+        bigint id PK "NEW"
+        bigint user_id FK "NEW - CASCADE, unique with lesson_id"
+        bigint lesson_id FK "CODE - RESTRICT"
+        smallint last_step_index "CODE - was a Map of id to index"
+        timestamp completed_at "FIX - NULL means in progress"
+        timestamp created_at "NEW"
+        timestamp updated_at "NEW"
+    }
+
+    badge_user {
+        bigint id PK "NEW"
+        bigint user_id FK "NEW - CASCADE, unique with badge_id"
+        bigint badge_id FK "CODE - RESTRICT"
+        timestamp earned_at "NEW - NOT NULL"
+    }
+
+    lesson_attempts {
+        bigint id PK "NEW"
+        bigint user_id FK "NEW - CASCADE"
+        bigint lesson_id FK "CODE - RESTRICT"
+        bigint module_id FK "FIX - denormalised for reporting"
+        varchar(255) lesson_title_snapshot "CODE - frozen at completion"
+        varchar(255) module_title_snapshot "CODE - frozen at completion"
+        smallint xp_earned "CODE"
+        smallint attempts "CODE"
+        boolean passed "CODE - always true today"
+        timestamp completed_at "CODE - stored as UTC"
+        timestamp created_at "NEW"
+    }
+
+    sync_queue_events {
+        bigint id PK "NEW"
+        bigint user_id FK "NEW - CASCADE"
+        char(36) client_event_uuid UK "NEW - dedupe key for replay"
+        varchar(40) event_type "NEW - stepPosition lessonCompletion"
+        json payload "NEW"
+        timestamp occurred_at "NEW"
+        timestamp synced_at "NEW - nullable until flushed"
+    }

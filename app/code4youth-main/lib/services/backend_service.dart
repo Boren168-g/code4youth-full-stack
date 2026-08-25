@@ -1,22 +1,36 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
 
 class BackendService {
-  // Your real hosted URL
   static const String baseUrl = 'https://code4youth-full-stack.onrender.com';
 
   Future<Map<String, dynamic>> getStatus() async {
     try {
-      print('[Docker] Checking status at $baseUrl/api/status');
       final response = await http.get(Uri.parse('$baseUrl/api/status')).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         return json.decode(response.body) as Map<String, dynamic>;
       }
       return {'status': 'Error', 'message': 'HTTP ${response.statusCode}'};
     } catch (e) {
-      print('[Docker] Status Error: $e');
       return {'status': 'Error', 'message': e.toString()};
+    }
+  }
+
+  /// New: Direct Admin Login check against MySQL
+  Future<Map<String, dynamic>?> adminLogin(String email, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/admin/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'email': email, 'password': password}),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      return null;
     }
   }
 
@@ -71,7 +85,6 @@ class BackendService {
 
       return response.statusCode == 200;
     } catch (e) {
-      print('[Docker] Sync Error: $e');
       return false;
     }
   }

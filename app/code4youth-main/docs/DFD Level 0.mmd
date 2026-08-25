@@ -1,0 +1,27 @@
+flowchart TB
+    Learner[Learner<br/>external entity]
+    Guardian[Guardian<br/>external entity]
+    Author[Content Author<br/>external entity]
+    Teacher[Teacher / Coordinator<br/>external entity]
+    FBAuth[Firebase Auth<br/>external system]
+    MailSvc[Email Service<br/>external system]
+
+    P0(((0<br/>Code4Youth<br/>Learning System)))
+
+    Learner -->|credentials, profile details,<br/>lesson answers, preferences| P0
+    P0 -->|curriculum content, progress,<br/>XP, badges, resume point| Learner
+
+    P0 -->|consent request email| MailSvc
+    MailSvc -->|delivery| Guardian
+    Guardian -->|approve or decline<br/>signed token| P0
+    P0 -->|confirmation page| Guardian
+
+    Author -->|module, lesson, step,<br/>challenge definitions| P0
+    P0 -->|draft and published<br/>content, validation errors| Author
+
+    Teacher -->|cohort queries| P0
+    P0 -->|aggregate progress reports| Teacher
+
+    P0 -->|ID token for verification| FBAuth
+    FBAuth -->|uid, email_verified,<br/>token validity| P0
+    P0 -->|verification and<br/>password reset triggers| FBAuth

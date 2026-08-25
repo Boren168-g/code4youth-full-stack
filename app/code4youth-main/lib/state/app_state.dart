@@ -53,7 +53,9 @@ class AppState extends ChangeNotifier {
   );
   
   UserProfile? get user => _user;
-  bool get isSignedIn => firebase_auth.FirebaseAuth.instance.currentUser != null;
+  
+  bool _isManualAdmin = false;
+  bool get isSignedIn => _isManualAdmin || firebase_auth.FirebaseAuth.instance.currentUser != null;
   bool get isActivated => _user?.isActivated ?? true;
 
   Future<void> checkBackendConnection() async {
@@ -72,8 +74,10 @@ class AppState extends ChangeNotifier {
 
   void _onAuthStateChanged(firebase_auth.User? firebaseUser) async {
     if (firebaseUser == null) {
-      _user = const UserProfile(displayName: 'Guest Learner', email: 'guest@example.com', grade: 'None', interests: [], avatar: '🦊');
-      _clearLocalData();
+      if (!_isManualAdmin) {
+        _user = const UserProfile(displayName: 'Guest Learner', email: 'guest@example.com', grade: 'None', interests: [], avatar: '🦊');
+        _clearLocalData();
+      }
     } else {
       // 1. Try to load basics from Firestore
       var profile = await _dbService.getProfile(firebaseUser.uid);
@@ -151,11 +155,11 @@ class AppState extends ChangeNotifier {
 
   Future<void> _syncProgress() async {
     final firebaseUser = firebase_auth.FirebaseAuth.instance.currentUser;
-    final uid = firebaseUser?.uid ?? 'guest-id';
+    final uid = firebaseUser?.uid ?? (user?.email ?? 'guest-id');
     if (_user == null) return;
 
     // Sync to Firebase
-    if (uid != 'guest-id') {
+    if (firebaseUser != null) {
       await _dbService.saveProgress(uid, _progressToMap());
     }
 
@@ -186,11 +190,10 @@ class AppState extends ChangeNotifier {
 
     if (success) {
        _backendStatus = 'Connected\nSync Successful!';
-       // Refresh local status from response if returned
-       final response = await _backendService.getProfile(uid);
-       if (response != null && response['status'] != null) {
-          _user = _user?.copyWith(status: response['status']);
-          notifyListeners();
+       // If sync successful, check if our status changed to admin on the server
+       final profile = await _backendService.getProfile(uid);
+       if (profile != null && profile['status'] != null) {
+          _user = _user?.copyWith(status: profile['status']);
        }
     }
     notifyListeners();
@@ -244,6 +247,24 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> signIn(String email, String password) async {
+    // 1. Try Admin Login (MySQL) first to support accounts that don't exist in Firebase
+    final adminData = await _backendService.adminLogin(email, password);
+    if (adminData != null) {
+      _isManualAdmin = true;
+      final userData = adminData['user'];
+      _user = UserProfile(
+        displayName: userData['name'] ?? 'Admin',
+        email: userData['email'],
+        grade: 'University',
+        interests: [],
+        status: 'admin',
+      );
+      _backendStatus = 'Logged in as Admin';
+      notifyListeners();
+      return;
+    }
+
+    // 2. Fallback to Firebase for normal users
     await _authService.signIn(email, password);
   }
 
@@ -265,6 +286,7 @@ class AppState extends ChangeNotifier {
 
   void signOut() async {
     await _authService.signOut();
+    _isManualAdmin = false;
     _clearLocalData();
     _user = const UserProfile(displayName: 'Guest Learner', email: 'guest@example.com', grade: 'None', interests: [], avatar: '🦊');
     notifyListeners();
@@ -272,6 +294,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> deleteAccount() async {
     await _authService.signOut();
+    _isManualAdmin = false;
     _clearLocalData();
     notifyListeners();
   }

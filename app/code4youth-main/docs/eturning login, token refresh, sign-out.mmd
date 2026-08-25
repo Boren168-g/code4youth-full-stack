@@ -1,0 +1,36 @@
+sequenceDiagram
+    autonumber
+    actor L as Learner
+    participant F as Flutter App
+    participant S as Secure Storage
+    participant FB as Firebase Auth
+    participant API as Laravel API
+
+    Note over F,S: Cold start - session resume
+    F->>FB: currentUser
+    alt no cached session
+        FB-->>F: null
+        F->>L: WelcomeScreen
+    else cached session exists
+        FB-->>F: User object
+        F->>FB: getIdToken - auto refresh if expiring
+        FB-->>F: fresh idToken - 1h TTL
+        F->>S: cache token
+        F->>API: GET /api/me + Bearer
+        API-->>F: profile + consent_status + email_verified
+        F->>L: AppShell or ConsentPending
+    end
+
+    Note over F,API: Token expiry during a session
+    F->>API: POST /api/lessons/12/complete + Bearer
+    API-->>F: 401 token expired
+    F->>FB: getIdToken force refresh true
+    FB-->>F: new idToken
+    F->>API: retry POST /api/lessons/12/complete
+    API-->>F: 200 - xp, new badges, level
+
+    Note over L,API: Sign out
+    L->>F: taps Sign out
+    F->>FB: signOut
+    F->>S: clear cached token
+    F->>L: WelcomeScreen

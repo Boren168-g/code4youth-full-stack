@@ -1,0 +1,53 @@
+flowchart TD
+    START([Start]) --> LAUNCH[Launch App]
+    LAUNCH --> SPLASH[Splash Screen]
+    SPLASH --> AUTHCHK{Signed in and<br/>activated?}
+
+    AUTHCHK -->|Not signed in| WELCOME[Welcome Screen]
+    AUTHCHK -->|Signed in, activated| HOME[Home / Dashboard]
+    AUTHCHK -->|Signed in, blocked| PENDING[Consent Pending]
+
+    WELCOME --> SIGNUP[Sign Up]
+    WELCOME --> LOGIN[Login]
+
+    SIGNUP --> CHECKMAIL[Check Your Email<br/>Firebase verification link]
+    CHECKMAIL --> ONBOARD[Onboarding<br/>Grade, Interests, Avatar]
+    ONBOARD --> MINOR{Under 18?}
+    MINOR -->|No| HOME
+    MINOR -->|Yes| CONSENT[Guardian Email Form]
+    CONSENT --> PENDING
+    PENDING -->|approved| HOME
+    PENDING -->|sign out| WELCOME
+
+    LOGIN --> HOME
+    LOGIN --> FORGOT[Forgot Password]
+    FORGOT --> RESETMAIL[Reset Link Sent<br/>learner resets in browser]
+    RESETMAIL --> LOGIN
+
+    HOME --> LEARN[Learn Tab<br/>Module List]
+    HOME --> PROGRESS[Progress Tab<br/>Stats & Badges]
+    HOME --> PROFILE[Profile Tab]
+
+    LEARN --> MODDETAIL[Module Detail<br/>lesson list + lock state]
+    MODDETAIL --> LESSON[Lesson View<br/>step by step]
+    HOME --> LESSON
+
+    LESSON --> CHALLENGE[Challenge]
+    CHALLENGE --> BADGE[Badge Award<br/>one screen per badge]
+    CHALLENGE --> LEVELUP[Level Up]
+    BADGE --> LEVELUP
+    BADGE --> RESULT
+    LEVELUP --> RESULT[Result & Points]
+    CHALLENGE --> RESULT
+    RESULT --> HOME
+    RESULT --> LESSON
+
+    HOME --> HISTORY[Lesson History]
+    PROGRESS --> HISTORY
+    PROFILE --> HISTORY
+    HISTORY --> LESSON
+    HISTORY --> CHALLENGE
+
+    PROFILE --> EDITPROF[Edit Profile]
+    PROFILE --> SETTINGS[Settings]
+    SETTINGS --> WELCOME

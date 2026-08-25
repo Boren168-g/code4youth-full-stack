@@ -1,0 +1,38 @@
+sequenceDiagram
+    autonumber
+    actor L as Learner
+    participant F as Flutter App
+    participant FB as Firebase Auth
+    participant API as Laravel API
+    participant DB as MySQL
+    participant M as Email Service
+
+    L->>F: enters name, email, password
+    F->>F: Validators.password - UX only
+    F->>FB: createUserWithEmailAndPassword
+    FB-->>F: UserCredential - uid, idToken, emailVerified false
+    F->>FB: sendEmailVerification
+    FB->>L: verification email with link
+
+    Note over F,API: First authenticated request creates the Laravel row
+    F->>API: GET /api/me + Bearer idToken
+    API->>API: verify JWT signature, exp, aud, iss
+    API->>DB: firstOrCreate by firebase_uid
+    DB-->>API: user row - profile incomplete
+    API-->>F: 200 - needs_onboarding true
+
+    F->>L: Onboarding - grade, interests, avatar
+    L->>F: selections
+    F->>API: PATCH /api/me + Bearer idToken
+    API->>DB: update profile, attach interests
+    API-->>F: 200 - is_minor true
+
+    alt learner is a minor
+        F->>API: POST /api/guardian-consents
+        API->>DB: insert guardian_consents, is_current true
+        API->>M: queue consent email with signed token
+        API-->>F: 202 accepted
+        F->>L: ConsentPendingScreen
+    else adult learner
+        F->>L: AppShell - home
+    end

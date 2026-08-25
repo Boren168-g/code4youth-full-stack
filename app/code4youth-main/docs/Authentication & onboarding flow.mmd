@@ -1,0 +1,81 @@
+
+flowchart TD
+
+    Start([App launch]) --> Splash[SplashScreen]
+
+    Splash --> FbUser{Firebase<br/>currentUser?}
+    FbUser -->|null| Welcome[WelcomeScreen]
+    FbUser -->|exists| Token[getIdToken]
+    Token --> Me[GET /api/me]
+    Me --> Gate{profile complete?<br/>emailVerified?<br/>consent ok?}
+
+    Gate -->|no profile| Onboard
+    Gate -->|blocked| Pending
+    Gate -->|all clear| Shell
+    Me -.->|network error| Offline[Offline / retry state<br/>NEW - does not exist today]
+
+    Welcome --> SignUp[SignUpScreen]
+    Welcome --> Login[LoginScreen]
+
+    SignUp --> FbCreate[createUserWithEmailAndPassword]
+    FbCreate --> FbVerify[sendEmailVerification]
+    FbVerify --> Onboard[OnboardingScreen<br/>grade / interests / avatar]
+
+    Login --> FbSignIn[signInWithEmailAndPassword]
+    FbSignIn --> Token
+    Login --> Forgot[ForgotPasswordScreen]
+    Forgot --> FbReset[sendPasswordResetEmail]
+    FbReset --> MailReset[/Learner opens email<br/>resets in browser/]
+    MailReset --> Login
+
+    Onboard --> Patch[PATCH /api/me<br/>grade, interests, avatar]
+    Patch --> Minor{grades.is_minor?}
+    Minor -->|no| Shell[AppShell]
+    Minor -->|yes| Guardian[GuardianConsentScreen]
+
+    Guardian --> PostConsent[POST /api/guardian-consents]
+    PostConsent --> SendMail[Laravel emails guardian]
+    SendMail --> Pending[ConsentPendingScreen]
+
+    Pending -->|poll every 10s| PollMe[GET /api/me]
+    PollMe --> Granted{granted<br/>and verified?}
+    Granted -->|no| Pending
+    Granted -->|yes| Shell
+
+    SendMail -.-> GuardianMail[/Guardian opens email<br/>on their own device/]
+    GuardianMail --> Approve[GET /consent/approve/token<br/>Laravel web page]
+    Approve --> DbUpdate[(guardian_consents.status<br/>= granted)]
+    DbUpdate -.-> PollMe
+
+    Pending --> SignOut[Sign out] --> Welcome
+
+    subgraph FLUTTER[" Flutter app "]
+        Splash
+        Welcome
+        SignUp
+        Login
+        Forgot
+        Onboard
+        Guardian
+        Pending
+        Shell
+        Offline
+    end
+
+    subgraph FIREBASE[" Firebase Auth "]
+        FbCreate
+        FbVerify
+        FbSignIn
+        FbReset
+        Token
+    end
+
+    subgraph LARAVEL[" Laravel API "]
+        Me
+        Patch
+        PostConsent
+        SendMail
+        PollMe
+        Approve
+        DbUpdate
+    end

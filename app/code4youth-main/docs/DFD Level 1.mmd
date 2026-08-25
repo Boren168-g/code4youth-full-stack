@@ -1,0 +1,76 @@
+---
+id: a55c4b8e-b37e-493a-952f-7223867e3920
+---
+flowchart TB
+    Learner[Learner]
+    Guardian[Guardian]
+    Author[Content Author]
+    Teacher[Teacher]
+    FBAuth[Firebase Auth]
+    MailSvc[Email Service]
+
+    P1((1.0<br/>Authenticate and<br/>Manage Account))
+    P2((2.0<br/>Manage Guardian<br/>Consent))
+    P3((3.0<br/>Deliver<br/>Curriculum))
+    P4((4.0<br/>Track Learning<br/>Progress))
+    P5((5.0<br/>Award XP<br/>and Badges))
+    P6((6.0<br/>Synchronise<br/>Offline Events))
+    P7((7.0<br/>Author and<br/>Publish Content))
+    P8((8.0<br/>Report Cohort<br/>Progress))
+
+    D1[(D1 Users and Profiles)]
+    D2[(D2 Guardian Consents)]
+    D3[(D3 Curriculum)]
+    D4[(D4 Learner Progress)]
+    D5[(D5 Learning History)]
+    D6[(D6 Badges and Levels)]
+    D7[(D7 Sync Queue)]
+    D8[(D8 Cohorts)]
+
+    Learner -->|credentials| P1
+    P1 -->|ID token verification| FBAuth
+    FBAuth -->|uid, email_verified| P1
+    P1 -->|profile record| D1
+    D1 -->|profile, consent status| P1
+    P1 -->|session state| Learner
+
+    P1 -->|is_minor true| P2
+    Learner -->|guardian email| P2
+    P2 -->|consent record| D2
+    D2 -->|status| P2
+    P2 -->|consent email| MailSvc
+    MailSvc --> Guardian
+    Guardian -->|signed approval token| P2
+    P2 -->|activation status| D1
+
+    Learner -->|module or lesson request| P3
+    D3 -->|modules, lessons, steps,<br/>challenges, options| P3
+    D4 -->|completion state for locking| P3
+    P3 -->|unlocked content| Learner
+
+    Learner -->|step position, answer, attempts| P4
+    P4 -->|resume cursor, completion| D4
+    P4 -->|attempt record| D5
+    D3 -->|lesson XP value| P4
+    P4 -->|completion event| P5
+
+    P5 -->|XP total, streak| D1
+    P5 -->|badge award| D6
+    D6 -->|thresholds, criteria| P5
+    P5 -->|level up, new badges| Learner
+
+    Learner -->|queued offline events| P6
+    P6 -->|pending events| D7
+    D7 -->|replay on reconnect| P6
+    P6 -->|deduplicated writes| P4
+
+    Author -->|content drafts| P7
+    P7 -->|modules, lessons, steps| D3
+    D3 -->|existing content| P7
+    P7 -->|validation errors| Author
+
+    Teacher -->|cohort query| P8
+    D8 -->|membership| P8
+    D5 -->|attempt history| P8
+    D4 -->|progress state| P8
+    P8 -->|aggregate report| Teacher

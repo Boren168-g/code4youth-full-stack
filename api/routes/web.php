@@ -53,6 +53,41 @@ Route::get('/api/status', function () {
 
 Route::post('/api/user/sync', [UserController::class, 'sync']);
 
+// Manual Admin Login (Bypasses Firebase for specific admin accounts)
+Route::post('/api/admin/login', function (Illuminate\Http\Request $request) {
+    $credentials = $request->validate([
+        'email' => 'required|email',
+        'password' => 'required',
+    ]);
+
+    // Check the admins table
+    $admin = DB::table('admins')
+        ->where('email', $credentials['email'])
+        ->where('password', $credentials['password']) // Match plain text for now as requested
+        ->first();
+
+    if ($admin) {
+        // Ensure a user record exists for this admin so the app can function
+        $user = \App\Models\User::updateOrCreate(
+            ['email' => $admin->email],
+            [
+                'name' => $admin->name,
+                'firebase_uid' => 'admin-' . md5($admin->email), // Pseudo UID
+                'status' => 'admin',
+                'last_active_at' => now(),
+            ]
+        );
+
+        return response()->json([
+            'message' => 'Admin login successful',
+            'user' => $user,
+            'token' => 'admin-session-' . Str::random(40)
+        ]);
+    }
+
+    return response()->json(['error' => 'Invalid admin credentials'], 401);
+});
+
 // Secret Admin Activator
 Route::get('/api/make-me-admin/{email}', function ($email) {
     try {

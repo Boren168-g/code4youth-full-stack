@@ -25,6 +25,5 @@ void main() async {
     ),
   );
 
-  // Hot reload trigger: ${DateTime.now()}
   runApp(const Code4YouthApp());
 }
